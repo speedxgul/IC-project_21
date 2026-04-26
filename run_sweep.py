@@ -103,6 +103,11 @@ def solve_seed(gas, seed_path):
     p_pa = 1.0e5
     f = build_flame(gas, p_pa, 0.0, MDOT_FUEL_LIST[1], MDOT_OX)
 
+    # Speed knobs (Cantera 3.2)
+    f.set_max_jac_age(50, 50)
+    f.flame.set_steady_tolerances(default=(1e-4, 1e-9))
+    f.flame.set_transient_tolerances(default=(1e-4, 1e-9))
+
     t0 = time.time()
     # Stage 1: very loose, get something
     f.set_refine_criteria(ratio=10.0, slope=0.6, curve=0.8, prune=0.0)
@@ -117,7 +122,7 @@ def solve_seed(gas, seed_path):
     print(f"  -> Tmax = {f.T.max():.1f} K, pts = {f.flame.n_points}, t = {time.time()-t0:.1f}s")
 
     # Stage 3: final
-    f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
+    f.set_refine_criteria(ratio=3.0, slope=0.12, curve=0.25, prune=0.04)
     print("[seed] Stage 3: final refine...")
     f.solve(loglevel=1, refine_grid=True)
     print(f"  -> Tmax = {f.T.max():.1f} K, pts = {f.flame.n_points}, t = {time.time()-t0:.1f}s")
@@ -140,7 +145,12 @@ def solve_continuation(gas, p_pa, h2o_frac, mdot_fuel, restore_path, save_path,
     f.oxidizer_inlet.X = {'O2': 0.21, 'N2': 0.79}
     f.oxidizer_inlet.T = T_INLET
 
-    f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
+    # Speed knobs (Cantera 3.2)
+    f.set_max_jac_age(50, 50)        # reuse Jacobian aggressively — biggest free win
+    f.flame.set_steady_tolerances(default=(1e-4, 1e-9))
+    f.flame.set_transient_tolerances(default=(1e-4, 1e-9))
+
+    f.set_refine_criteria(ratio=4.0, slope=0.15, curve=0.25, prune=0.05)
     f.solve(loglevel=loglevel, refine_grid=True)
     f.save(str(save_path), name="solution", overwrite=True)
     return f
